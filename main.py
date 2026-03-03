@@ -9,4 +9,3 @@ elif salario > 10000 and salario < 20000:
     print(f"você ganha bem. R$ {salario}")
 else: 
     print(f"você ganha muito bem. R$ {salario}")
-
