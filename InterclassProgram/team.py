@@ -15,4 +15,3 @@ class Team:
         else:
             for player in self.players_list:
                 print(f" - {player.name}")
-                
