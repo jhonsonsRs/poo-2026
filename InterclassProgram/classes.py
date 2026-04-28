@@ -3,9 +3,10 @@ class Player:
         self.name = name
         self.nickname = nickname
         self.grade = grade
+        self.have_team = False
 
     def __str__(self):
-        return f"Player: {self.name}\nNickname: {self.nickname}\nGrade: {self.grade}"
+        return f"Player: {self.name}\nNickname: {self.nickname}\nClasse: {self.grade}"
 
 class Team:
     def __init__(self, name, game):
@@ -14,7 +15,7 @@ class Team:
         self.players_list = []
     
     def __str__(self):
-        return f"Team name: {self.name}\nGame: {self.game}\nQuantidade de players: {len(self.players_list)}"
+        return f"Nome do Time: {self.name}\nJogo: {self.game}\nQuantidade de players: {len(self.players_list)}"
     
     def print_players(self):
         if len(self.players_list) == 0:
@@ -25,3 +26,6 @@ class Team:
     
     def add_player(self, player):
         self.players_list.append(player)
+
+    def remove_player(self, player):
+        self.players_list.remove(player)
