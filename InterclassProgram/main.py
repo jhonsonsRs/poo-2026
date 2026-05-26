@@ -85,6 +85,9 @@ def remove_player_team():
             break
     
     if player_found and team_found:
+        if player_found not in team_found.players_list:
+            print(f"Jogador '{player_name}' não pertence ao time {team_found.name}!")
+            return
         team_found.remove_player(player_found)
         player_found.have_team = False
         print(f"{player_found.name} removido do time {team_found.name}!")

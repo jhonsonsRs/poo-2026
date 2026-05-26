@@ -29,3 +29,4 @@ class Team:
 
     def remove_player(self, player):
         self.players_list.remove(player)
+        
