@@ -61,6 +61,9 @@ class GameView(arcade.View):
         self.player_list.draw()
         self.coins.draw()
         self.score_label.draw()
+        arcade.draw_lrbt_rectangle_filled(SCREEN_WIDTH - 210, SCREEN_WIDTH - 10, SCREEN_HEIGHT - 40, SCREEN_HEIGHT - 20, arcade.color.GRAY)
+        hp_width = 200 * (self.player.health / self.player.max_health)
+        arcade.draw_lrbt_rectangle_filled(SCREEN_WIDTH - 210, SCREEN_WIDTH - 210 + hp_width, SCREEN_HEIGHT - 40, SCREEN_HEIGHT - 20, arcade.color.RED)
 
     def spawn_coins(self):
         self.coins = arcade.SpriteList() 
