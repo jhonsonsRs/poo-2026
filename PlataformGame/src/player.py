@@ -24,9 +24,9 @@ class Player(Entity):
         if keys is None:
             keys = set()
         if arcade.key.LEFT in keys or arcade.key.A in keys:
-            self.change_x = -self.speed
+            self.change_x = -self.speed 
         elif arcade.key.RIGHT in keys or arcade.key.D in keys:
-            self.change_x = self.speed
+            self.change_x = self.speed 
         else: 
             self.change_x = 0
         

@@ -26,3 +26,4 @@ class Coin(arcade.Sprite):
             self.frame_timer = 0
             self.current_frame = (self.current_frame + 1) % len(self.textures_list)
             self.texture = self.textures_list[self.current_frame]
+        
