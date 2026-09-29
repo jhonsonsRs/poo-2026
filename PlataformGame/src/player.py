@@ -36,7 +36,6 @@ class Player(Entity):
         self.center_x = max(self.width / 2, min(self.center_x, SCREEN_WIDTH - self.width / 2))
         self.center_y = max(self.height / 2, min(self.center_y, SCREEN_HEIGHT - self.height / 2))
 
-        # animação
         if self.change_y > 0:
             new_textures = self.jump_textures
         elif self.change_y < 0:
