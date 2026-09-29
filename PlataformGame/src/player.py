@@ -22,17 +22,22 @@ class Player(Entity):
         self.score = 0
         self.is_on_ground = False
         self.jumps_remaining = 2
+        self.knockback_timer = 0.0
 
     def update(self, delta_time: float = 1/60, keys: set = None):
         if keys is None:
             keys = set()
 
-        if arcade.key.LEFT in keys or arcade.key.A in keys:
-            self.change_x = -self.speed
-        elif arcade.key.RIGHT in keys or arcade.key.D in keys:
-            self.change_x = self.speed
+        em_knockback = self.knockback_timer > 0
+        if em_knockback:
+            self.knockback_timer -= delta_time
         else:
-            self.change_x = 0
+            if arcade.key.LEFT in keys or arcade.key.A in keys:
+                self.change_x = -self.speed
+            elif arcade.key.RIGHT in keys or arcade.key.D in keys:
+                self.change_x = self.speed
+            else:
+                self.change_x = 0
 
         self.center_x = max(self.width / 2, min(self.center_x, SCREEN_WIDTH - self.width / 2))
         self.center_y = max(self.height / 2, min(self.center_y, SCREEN_HEIGHT - self.height / 2))
@@ -50,10 +55,11 @@ class Player(Entity):
             self.current_textures = new_textures
             self.current_frame = 0
 
-        if self.change_x > 0:
-            self.facing_right = True
-        elif self.change_x < 0:
-            self.facing_right = False
+        if not em_knockback:
+            if self.change_x > 0:
+                self.facing_right = True
+            elif self.change_x < 0:
+                self.facing_right = False
 
         self.frame_timer += delta_time
         if self.frame_timer >= self.frame_speed:
@@ -80,6 +86,8 @@ class Player(Entity):
             self.jump()
 
     def on_key_release(self, key):
+        if self.knockback_timer > 0:
+            return
         if key in (arcade.key.LEFT, arcade.key.A):
             self.change_x = 0
         elif key in (arcade.key.RIGHT, arcade.key.D):
@@ -90,3 +98,11 @@ class Player(Entity):
             self.change_y = self.jump_speed
             self.jumps_remaining -= 1
             self.is_on_ground = False
+
+    def apply_knockback(self, source_x: float, force_x: float = 9.0,
+                        force_y: float = 8.0, duration: float = 0.2):
+        direction = 1 if self.center_x >= source_x else -1
+        self.change_x = direction * force_x
+        self.change_y = force_y
+        self.knockback_timer = duration
+        self.is_on_ground = False

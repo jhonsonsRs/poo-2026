@@ -27,6 +27,14 @@ class GameView(arcade.View):
         self.collected_coins = 0
         self.alert_timer = 0.0
 
+        # câmera + tremor de tela
+        self.camera = arcade.Camera2D()
+        self.camera_center = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+        self.camera.position = self.camera_center
+        self.shake_time = 0.0
+        self.shake_duration = 0.0
+        self.shake_amplitude = 0.0
+
         self.player = Player(
             '../sprites/Frog/frog.png', PLAYER_SCALE, PLAYER_SPEED, PLAYER_MAX_HEALTH, player_name
         )
@@ -118,6 +126,24 @@ class GameView(arcade.View):
             arcade.PhysicsEnginePlatformer(pinkman, walls=self.static_objects, gravity_constant=GRAVITY)
         )
 
+    def start_shake(self, amplitude: float = 10.0, duration: float = 0.3):
+        self.shake_amplitude = amplitude
+        self.shake_duration = duration
+        self.shake_time = duration
+
+    def _update_shake(self, delta_time: float):
+        cx, cy = self.camera_center
+        if self.shake_time > 0:
+            self.shake_time -= delta_time
+            fator = max(self.shake_time, 0) / self.shake_duration
+            a = self.shake_amplitude * fator
+            self.camera.position = (
+                cx + random.uniform(-a, a),
+                cy + random.uniform(-a, a),
+            )
+        else:
+            self.camera.position = (cx, cy)
+
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
         self.player.on_key_press(key)
@@ -131,13 +157,17 @@ class GameView(arcade.View):
 
     def on_draw(self):
         self.clear()
-        self.background.draw()
-        self.static_objects.draw()
-        self.enemies.draw()
-        self.player_list.draw()
-        self.coins.draw()
-        self.special_coins.draw()
 
+        # mundo (treme junto com a câmera)
+        with self.camera.activate():
+            self.background.draw()
+            self.static_objects.draw()
+            self.enemies.draw()
+            self.player_list.draw()
+            self.coins.draw()
+            self.special_coins.draw()
+
+        # HUD (fixo, não treme)
         self.score_label.draw()
         self.timer_label.draw()
 
@@ -158,6 +188,7 @@ class GameView(arcade.View):
 
     def on_update(self, delta_time):
         self.tempo += delta_time
+        self._update_shake(delta_time)
 
         if self.alert_timer > 0:
             self.alert_timer -= delta_time
@@ -190,7 +221,10 @@ class GameView(arcade.View):
             self._spawn_special_coin()
 
         for enemy in arcade.check_for_collision_with_list(self.player, self.enemies):
+            enemy_x = enemy.center_x  # antes do on_hit_player (PinkMan teleporta)
             if enemy.on_hit_player(self.player):
+                self.player.apply_knockback(enemy_x)
+                self.start_shake()
                 self.alert_label.text = '- 1 PONTO!'
                 self.alert_timer = 1.0
 
@@ -203,5 +237,5 @@ class GameView(arcade.View):
                 score=self.player.score,
                 max_score=TOTAL_STATIC_COINS,
                 tempo=self.tempo,
-                nome=self.player.name
+                nome=self.player.name,
             ))

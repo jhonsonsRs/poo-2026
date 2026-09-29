@@ -12,7 +12,7 @@ class GameOverView(arcade.View):
         self.nome = nome
         self.vitoria_perfeita = score >= max_score
 
-        Pontuacao.create(nome_player=nome, pontuacao=score)
+        Pontuacao.create(nome_player=nome, pontuacao=score, tempo=tempo)
 
     def on_draw(self):
         self.clear()

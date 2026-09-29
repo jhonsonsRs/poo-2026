@@ -5,6 +5,7 @@ db = SqliteDatabase('pontuacao.db')
 class Pontuacao(Model):
     nome_player = CharField()
     pontuacao = FloatField()
+    tempo = FloatField()
 
     class Meta:
         database = db
