@@ -4,13 +4,14 @@ from constants import PLAYER_JUMP_SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
 
 
 class Player(Entity):
-    def __init__(self, sprite: str, scale: float, speed: float, max_health: int):
+    def __init__(self, sprite: str, scale: float, speed: float, max_health: int, name: str):
         super().__init__(sprite, scale, speed, max_health)
         self.facing_right = True
         self.current_frame = 0
         self.frame_timer = 0
         self.frame_speed = 0.1
 
+        self.name = name
         self.idle_textures = self.load_atlas('../sprites/Frog/frog_idle.png', 4)
         self.run_textures  = self.load_atlas('../sprites/Frog/frog_run.png',  6)
         self.jump_textures = self.load_atlas('../sprites/Frog/frog_jump.png', 1)

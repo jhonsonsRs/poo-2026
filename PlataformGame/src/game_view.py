@@ -3,6 +3,7 @@ import random
 from player import Player
 from coin import Coin, SpecialCoin
 from enemy import Enemy, PinkMan
+from name_view import NameView
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     PLAYER_MAX_HEALTH, PLAYER_SCALE, PLAYER_SPEED,
@@ -19,16 +20,15 @@ def tile_to_px(tile_x, tile_y, map_height_tiles=25):
 
 
 class GameView(arcade.View):
-    def __init__(self, window=None):
+    def __init__(self, player_name: str, window=None):
         super().__init__(window)
         self.keys_pressed = set()
         self.tempo = 0.0
         self.collected_coins = 0
         self.alert_timer = 0.0
 
-        # player
         self.player = Player(
-            '../sprites/Frog/frog.png', PLAYER_SCALE, PLAYER_SPEED, PLAYER_MAX_HEALTH
+            '../sprites/Frog/frog.png', PLAYER_SCALE, PLAYER_SPEED, PLAYER_MAX_HEALTH, player_name
         )
         self.player.center_x = 200
         self.player.center_y = 300
@@ -202,5 +202,6 @@ class GameView(arcade.View):
             self.window.show_view(GameOverView(
                 score=self.player.score,
                 max_score=TOTAL_STATIC_COINS,
-                tempo=self.tempo
+                tempo=self.tempo,
+                nome=self.player.name
             ))

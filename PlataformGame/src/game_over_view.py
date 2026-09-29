@@ -1,14 +1,18 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from pontuacao import Pontuacao
 
 
 class GameOverView(arcade.View):
-    def __init__(self, score: int, max_score: int, tempo: float, window=None):
+    def __init__(self, score: int, max_score: int, tempo: float, nome: str, window=None):
         super().__init__(window)
         self.score = score
         self.max_score = max_score
         self.tempo = tempo
+        self.nome = nome
         self.vitoria_perfeita = score >= max_score
+
+        Pontuacao.create(nome_player=nome, pontuacao=score)
 
     def on_draw(self):
         self.clear()
@@ -35,14 +39,20 @@ class GameOverView(arcade.View):
             anchor_x='center',
         )
         arcade.draw_text(
-            f'Pontuação final: {self.score}',
+            f'Jogador: {self.nome}',
             SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40,
             arcade.color.WHITE, font_size=24,
             anchor_x='center', bold=True
         )
         arcade.draw_text(
-            f'Tempo total: {self.tempo:.1f}s',
+            f'Pontuação final: {self.score}',
             SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 10,
+            arcade.color.WHITE, font_size=24,
+            anchor_x='center', bold=True
+        )
+        arcade.draw_text(
+            f'Tempo total: {self.tempo:.1f}s',
+            SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 60,
             arcade.color.LIGHT_GRAY, font_size=20,
             anchor_x='center',
         )

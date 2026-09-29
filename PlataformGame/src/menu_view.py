@@ -23,6 +23,7 @@ class MenuView(arcade.View):
             '[J] Jogar',
             '[I] Instruções',
             '[S] Sobre o Jogo',
+            '[R] Tela de Ranking',  
             '[ESC] Sair',
         ]
         for i, texto in enumerate(opcoes):
@@ -37,8 +38,8 @@ class MenuView(arcade.View):
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.J:
-            from game_view import GameView
-            self.window.show_view(GameView())
+            from name_view import NameView
+            self.window.show_view(NameView())
 
         elif key == arcade.key.I:
             from instructions_view import InstructionsView
@@ -47,6 +48,10 @@ class MenuView(arcade.View):
         elif key == arcade.key.S:
             from about_view import AboutView
             self.window.show_view(AboutView())
+
+        elif key == arcade.key.R:
+            from ranking_view import RankingView
+            self.window.show_view(RankingView())
 
         elif key == arcade.key.ESCAPE:
             arcade.exit()
