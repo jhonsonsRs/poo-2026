@@ -1,61 +1,98 @@
+import os
 import arcade
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from ui import (Layer, Title, Footer, get_background, make_sprite,
+                FONT_DIR, INK, MUTED)
+
+NOME = 'João Emanuel Vieira Orlando'
+FOTO = 'profile.jpeg'
+SS = 2
 
 
-def make_circular_texture(path, size=300):
-    img = Image.open(path).convert('RGBA')
-    img = ImageOps.fit(img, (size, size), Image.LANCZOS)
-    mask = Image.new('L', (size, size), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0, size, size), fill=255)
-    img.putalpha(mask)
-    return arcade.Texture(img)
+def _achar_foto():
+    aqui = os.path.dirname(os.path.abspath(__file__))
+    for pasta in ('../sprites', 'sprites', os.path.join(aqui, '..', 'sprites'),
+                  os.path.join(aqui, 'sprites')):
+        caminho = os.path.join(pasta, FOTO)
+        if os.path.exists(caminho):
+            return caminho
+    return None
+
+
+def _foto_ou_iniciais(caminho, size):
+    """Foto recortada; se não existir, um círculo com as iniciais."""
+    if caminho:
+        return ImageOps.fit(Image.open(caminho).convert('RGBA'),
+                            (size, size), Image.LANCZOS)
+    img = Image.new('RGBA', (size, size), (92, 70, 214, 255))
+    try:
+        fonte = ImageFont.truetype(
+            os.path.join(FONT_DIR, 'Poppins-Bold.ttf'), size // 3)
+    except Exception:
+        fonte = ImageFont.load_default()
+    ImageDraw.Draw(img).text((size / 2, size / 2), 'JO', font=fonte,
+                             fill=(255, 255, 255, 255), anchor='mm')
+    return img
+
+
+def make_avatar(caminho, size=360, ring=7, pad=12):
+    """Foto circular com anel dourado e brilho suave."""
+    total = size + 2 * ring + 2 * pad
+    canvas = Image.new('RGBA', (total, total), (255, 196, 61, 0))
+
+    # brilho dourado
+    glow = Image.new('RGBA', (total, total), (255, 196, 61, 0))
+    ImageDraw.Draw(glow).ellipse(
+        (pad - 6, pad - 6, total - pad + 6, total - pad + 6),
+        fill=(255, 196, 61, 0))
+    glow = glow.filter(ImageFilter.GaussianBlur(14))
+    canvas = Image.alpha_composite(canvas, glow)
+
+    # anel + foto (em alta resolução, depois reduz para suavizar)
+    big = total * SS
+    layer = Image.new('RGBA', (big, big), (255, 196, 61, 0))
+    d = ImageDraw.Draw(layer)
+    d.ellipse((pad * SS, pad * SS, (total - pad) * SS - 1,
+               (total - pad) * SS - 1), fill=INK)
+    inner = (size) * SS
+    foto = _foto_ou_iniciais(caminho, inner)
+    mask = Image.new('L', (inner, inner), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, inner - 1, inner - 1), fill=255)
+    foto.putalpha(mask)
+    off = (pad + ring) * SS
+    layer.alpha_composite(foto, (off, off))
+    layer = layer.resize((total, total), Image.LANCZOS)
+    return Image.alpha_composite(canvas, layer)
 
 
 class AboutView(arcade.View):
     def __init__(self, window=None):
         super().__init__(window)
-        self.avatar = arcade.Sprite(scale=0.4)
-        self.avatar.texture = make_circular_texture('../sprites/profile.jpeg')
-        self.avatar.center_x = SCREEN_WIDTH / 2
-        self.avatar.center_y = SCREEN_HEIGHT / 2 + 20
+        self.bg = get_background()
+        cx = SCREEN_WIDTH / 2
+        self.titulo = Title('Sobre o Jogo', cx, SCREEN_HEIGHT - 60, size=38)
+        self.rodape = Footer([('M', 'Voltar ao Menu'), ('ESC', 'Voltar')])
 
-        self.avatar_list = arcade.SpriteList()
-        self.avatar_list.append(self.avatar)
+        L = self.layer = Layer()
+        L.panel(cx, 390, 640, 380)
+        L.text('DESENVOLVIDO POR', cx, 545, 13, MUTED, bold=True)
+
+        avatar = make_avatar(_achar_foto())
+        s = L.image(avatar, cx, 415)
+        s.scale = 0.5
+
+        L.text(NOME, cx + 0, 270, 24, INK, bold=True)
+
+    def on_update(self, delta_time):
+        self.bg.update(delta_time)
 
     def on_draw(self):
         self.clear()
-
-        arcade.draw_text(
-            'Sobre o Jogo',
-            SCREEN_WIDTH / 2, SCREEN_HEIGHT - 80,
-            arcade.color.WHITE, font_size=36,
-            anchor_x='center', bold=True
-        )
-
-        arcade.draw_text(
-            'Desenvolvido por:',
-            SCREEN_WIDTH / 2, SCREEN_HEIGHT - 140,
-            arcade.color.LIGHT_GRAY, font_size=20,
-            anchor_x='center',
-        )
-
-        self.avatar_list.draw()
-
-        arcade.draw_text(
-            'João Emanuel Vieira Orlando',
-            SCREEN_WIDTH / 2, self.avatar.bottom - 30,
-            arcade.color.WHITE, font_size=20,
-            anchor_x='center', bold=True
-        )
-
-        arcade.draw_text(
-            '[ESC] ou [M] — Voltar ao Menu',
-            SCREEN_WIDTH / 2, 60,
-            arcade.color.LIGHT_GRAY, font_size=16,
-            anchor_x='center',
-        )
+        self.bg.draw()
+        self.titulo.draw()
+        self.layer.draw()
+        self.rodape.draw()
 
     def on_key_press(self, key, modifiers):
         if key in (arcade.key.ESCAPE, arcade.key.M):

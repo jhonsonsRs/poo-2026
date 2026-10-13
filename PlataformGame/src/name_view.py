@@ -1,82 +1,81 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from ui import (Layer, Title, Footer, Button, T, get_background,
+                rounded_image, make_sprite, INK, MUTED, RED)
 
 MAX_NOME = 16
 
 
 class NameView(arcade.View):
- 
+
     def __init__(self, window=None):
         super().__init__(window)
+        self.bg = get_background()
         self.nome = ''
         self.erro = ''
         self.tempo = 0.0
 
-        self.campo_w = 400
-        self.campo_h = 50
-        self.campo_x = SCREEN_WIDTH / 2
-        self.campo_y = SCREEN_HEIGHT / 2
+        cx = SCREEN_WIDTH / 2
+        self.campo_w = 480
+        self.campo_h = 60
+        self.campo_x = cx
+        self.campo_y = 385
 
-        self.btn_w = 200
-        self.btn_h = 50
-        self.btn_x = SCREEN_WIDTH / 2
-        self.btn_y = SCREEN_HEIGHT / 2 - 110
+        self.btn_w = 260
+        self.btn_h = 56
+        self.btn_x = cx
+        self.btn_y = 265
 
-    def on_update(self, delta_time):
-        self.tempo += delta_time
+        self.titulo = Title('Digite seu nome', cx, SCREEN_HEIGHT - 130,
+                            size=38)
+        self.rodape = Footer([('ENTER', 'Confirmar'), ('ESC', 'Voltar')])
 
-    def on_draw(self):
-        self.clear()
+        L = self.layer = Layer()
+        L.panel(cx, 335, 700, 270)
 
-        arcade.draw_text(
-            'Digite seu nome',
-            SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 120,
-            arcade.color.WHITE, font_size=36,
-            anchor_x='center', bold=True
-        )
+        # campo de texto com brilho dourado (sempre em foco)
+        img = rounded_image(self.campo_w, self.campo_h, 14,
+                            (255, 255, 255, 255), outline=INK, ow=3)
+        L.image(img, self.campo_x, self.campo_y)
+
+        self.botao = Button('PRONTO', self.btn_x, self.btn_y,
+                            w=self.btn_w, h=self.btn_h, kind='success',
+                            size=22)
 
         esq = self.campo_x - self.campo_w / 2
         dir_ = self.campo_x + self.campo_w / 2
-        baixo = self.campo_y - self.campo_h / 2
-        cima = self.campo_y + self.campo_h / 2
-        arcade.draw_lrbt_rectangle_outline(
-            esq, dir_, baixo, cima, arcade.color.WHITE, 2
-        )
+        self.texto = T('|', esq + 18, self.campo_y, 24, INK,
+                       ax='left')
+        self.contador = T(f'0/{MAX_NOME}', dir_, self.campo_y - 50, 13,
+                          MUTED, ax='right')
+        self.msg_erro = T('', esq, self.campo_y - 50, 14, RED, ax='left')
+
+    # ----------------------------------------------------------- eventos
+    def on_update(self, delta_time):
+        self.tempo += delta_time
+        self.bg.update(delta_time)
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.botao.active = self.botao.contains(x, y)
+
+    def on_draw(self):
+        self.clear()
+        self.bg.draw()
+        self.titulo.draw()
+        self.layer.draw()
 
         cursor = '|' if int(self.tempo * 2) % 2 == 0 else ' '
-        arcade.draw_text(
-            self.nome + cursor,
-            esq + 12, self.campo_y,
-            arcade.color.WHITE, font_size=22,
-            anchor_x='left', anchor_y='center'
-        )
+        self.texto.text = self.nome + cursor
+        self.texto.draw()
 
+        self.contador.text = f'{len(self.nome)}/{MAX_NOME}'
+        self.contador.draw()
         if self.erro:
-            arcade.draw_text(
-                self.erro,
-                SCREEN_WIDTH / 2, self.campo_y - 50,
-                arcade.color.RED, font_size=16,
-                anchor_x='center'
-            )
+            self.msg_erro.text = self.erro
+            self.msg_erro.draw()
 
-        arcade.draw_lrbt_rectangle_filled(
-            self.btn_x - self.btn_w / 2, self.btn_x + self.btn_w / 2,
-            self.btn_y - self.btn_h / 2, self.btn_y + self.btn_h / 2,
-            arcade.color.DARK_GREEN
-        )
-        arcade.draw_text(
-            'PRONTO',
-            self.btn_x, self.btn_y,
-            arcade.color.WHITE, font_size=22,
-            anchor_x='center', anchor_y='center', bold=True
-        )
-
-        arcade.draw_text(
-            '[ENTER] Confirmar   [ESC] Voltar',
-            SCREEN_WIDTH / 2, 80,
-            arcade.color.LIGHT_GRAY, font_size=18,
-            anchor_x='center'
-        )
+        self.botao.draw()
+        self.rodape.draw()
 
     def on_text(self, text):
         if len(self.nome) >= MAX_NOME:
@@ -95,13 +94,12 @@ class NameView(arcade.View):
             self.window.show_view(MenuView())
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if (abs(x - self.btn_x) <= self.btn_w / 2
-                and abs(y - self.btn_y) <= self.btn_h / 2):
+        if self.botao.contains(x, y):
             self.confirmar()
 
     def confirmar(self):
         nome = self.nome.strip()
-        
+
         if not nome:
             self.erro = 'Digite um nome antes de continuar.'
             return
