@@ -1,6 +1,6 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from ui import (Layer, Title, Footer, Button, T, get_background,
+from ui import (draw_crt, Layer, Title, Footer, Button, T, get_background,
                 rounded_image, make_sprite, INK, MUTED, RED)
 
 MAX_NOME = 16
@@ -76,6 +76,7 @@ class NameView(arcade.View):
 
         self.botao.draw()
         self.rodape.draw()
+        draw_crt()
 
     def on_text(self, text):
         if len(self.nome) >= MAX_NOME:

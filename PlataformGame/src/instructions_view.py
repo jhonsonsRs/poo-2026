@@ -1,6 +1,6 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from ui import (Layer, Title, Footer, get_background, rounded_image,
+from ui import (draw_crt, Layer, Title, Footer, get_background, rounded_image,
                 circle_image, INK, MUTED, ORANGE)
 
 COL_ESQ = 140
@@ -93,6 +93,7 @@ class InstructionsView(arcade.View):
         self.titulo.draw()
         self.layer.draw()
         self.rodape.draw()
+        draw_crt()
 
     def on_key_press(self, key, modifiers):
         if key in (arcade.key.ESCAPE, arcade.key.M):

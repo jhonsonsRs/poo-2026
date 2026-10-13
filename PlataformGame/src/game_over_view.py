@@ -1,7 +1,7 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from pontuacao import Pontuacao
-from ui import (Layer, Title, Button, get_background, rounded_image,
+from ui import (draw_crt, Layer, Title, Button, get_background, rounded_image,
                 GOLD, MUTED, WHITE, INK, ORANGE, CREAM_DK)
 
 
@@ -81,6 +81,7 @@ class GameOverView(arcade.View):
         self.titulo.draw()
         for b in self.botoes:
             b.draw()
+        draw_crt()
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.M:

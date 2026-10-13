@@ -1,6 +1,6 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
-from ui import Button, Title, get_background
+from ui import draw_crt, Button, Title, get_background
 
 
 class MenuView(arcade.View):
@@ -63,6 +63,7 @@ class MenuView(arcade.View):
         self.titulo.draw()
         for b in self.botoes:
             b.draw()
+        draw_crt()
 
     def on_mouse_motion(self, x, y, dx, dy):
         for i, b in enumerate(self.botoes):

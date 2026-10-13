@@ -4,6 +4,7 @@ from player import Player
 from coin import Coin, SpecialCoin
 from enemy import Enemy, PinkMan
 from name_view import NameView
+from ui import draw_crt, update_crt
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     PLAYER_MAX_HEALTH, PLAYER_SCALE, PLAYER_SPEED,
@@ -186,8 +187,12 @@ class GameView(arcade.View):
             arcade.color.RED
         )
 
+        # efeito de TV de tubo por cima de tudo (fixo, não treme)
+        draw_crt()
+
     def on_update(self, delta_time):
         self.tempo += delta_time
+        update_crt(delta_time)
         self._update_shake(delta_time)
 
         if self.alert_timer > 0:

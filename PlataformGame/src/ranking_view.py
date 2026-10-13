@@ -1,7 +1,7 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from pontuacao import Pontuacao
-from ui import (Layer, Title, Footer, get_background, rounded_image,
+from ui import (draw_crt, Layer, Title, Footer, get_background, rounded_image,
                 circle_image, GOLD, SILVER, BRONZE, INK, MUTED, CREAM_DK)
 
 MAX_LINHAS = 10
@@ -86,6 +86,7 @@ class RankingView(arcade.View):
         self.titulo.draw()
         self.layer.draw()
         self.rodape.draw()
+        draw_crt()
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.M:

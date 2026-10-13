@@ -2,7 +2,7 @@ import os
 import arcade
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from ui import (Layer, Title, Footer, get_background, make_sprite,
+from ui import (draw_crt, Layer, Title, Footer, get_background, make_sprite,
                 FONT_DIR, INK, MUTED)
 
 NOME = 'João Emanuel Vieira Orlando'
@@ -93,6 +93,7 @@ class AboutView(arcade.View):
         self.titulo.draw()
         self.layer.draw()
         self.rodape.draw()
+        draw_crt()
 
     def on_key_press(self, key, modifiers):
         if key in (arcade.key.ESCAPE, arcade.key.M):

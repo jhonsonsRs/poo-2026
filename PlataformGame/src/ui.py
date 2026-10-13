@@ -330,6 +330,7 @@ class Background:
             self.cloud_info.append((v, img.size[0]))
 
     def update(self, dt):
+        update_crt(dt)
         for s, (v, w) in zip(self.clouds, self.cloud_info):
             s.center_x += v * dt
             if s.center_x - w / 2 > W:
@@ -452,3 +453,91 @@ class Footer:
 
     def draw(self):
         self.layer.draw()
+
+
+# ------------------------------------------------------ TV de tubo (CRT)
+CRT_ATIVO = True  # mude para False para desligar o efeito em todas as telas
+
+
+def _crt_overlay_image():
+    """Vinheta + cantos arredondados (vidro curvo) + linhas de varredura."""
+    # vinheta: escurece perto das bordas
+    rad = Image.radial_gradient('L').resize((W, H), Image.BICUBIC)
+    vig = rad.point(lambda v: int(max(0, v - 140) * 1.3))
+    # cantos arredondados escuros (borda da tela)
+    m = 22
+    mask = Image.new('L', (W * 2, H * 2), 255)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        (m * 2, m * 2, W * 2 - m * 2, H * 2 - m * 2), 90, fill=0)
+    mask = mask.resize((W, H), Image.LANCZOS)
+    from PIL import ImageFilter, ImageChops
+    mask = mask.filter(ImageFilter.GaussianBlur(6))
+    alpha = ImageChops.lighter(vig, mask)
+    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    img.putalpha(alpha.point(lambda v: min(255, int(v * 0.8))))
+    # linhas de varredura: 2 de cada 4 linhas escurecidas
+    scan = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    ds = ImageDraw.Draw(scan)
+    for y in range(0, H, 4):
+        ds.rectangle((0, y, W, y + 1), fill=(0, 0, 0, 38))
+    return Image.alpha_composite(scan, img)
+
+
+def _crt_band_image():
+    """Faixa de luz suave que desce pela tela (rolagem do tubo)."""
+    bh = 140
+    band = Image.new('RGBA', (W, bh), (255, 255, 255, 0))
+    soft = Image.new('L', (W, bh))
+    for y in range(bh):
+        k = 1 - abs(y - bh / 2) / (bh / 2)
+        soft.paste(int(255 * k), (0, y, W, y + 1))
+    band.putalpha(soft.point(lambda v: v // 7))
+    return band
+
+
+class CRT:
+    def __init__(self):
+        self.overlay = arcade.SpriteList()
+        self.overlay.append(make_sprite(_crt_overlay_image(), W / 2, H / 2))
+        self.band = arcade.SpriteList()
+        self.band_sprite = make_sprite(_crt_band_image(), W / 2, H + 70)
+        self.band.append(self.band_sprite)
+        self.flicker = arcade.SpriteList()
+        dim = Image.new('RGBA', (W, H), (0, 0, 0, 255))
+        self.flicker_sprite = make_sprite(dim, W / 2, H / 2)
+        self.flicker_sprite.alpha = 0
+        self.flicker.append(self.flicker_sprite)
+        self.t = 0.0
+
+    def update(self, dt):
+        self.t += dt
+        s = self.band_sprite
+        s.center_y -= 70 * dt
+        if s.center_y < -70:
+            s.center_y = H + 70
+        # tremidinha de brilho (0 a ~9 de 255)
+        self.flicker_sprite.alpha = int(
+            4 + 3 * math.sin(self.t * 47) + random.uniform(0, 3))
+
+    def draw(self):
+        self.flicker.draw()
+        self.band.draw()
+        self.overlay.draw()
+
+
+_crt = None
+
+
+def draw_crt():
+    """Chame no FINAL do on_draw de qualquer tela para aplicar o efeito."""
+    global _crt
+    if not CRT_ATIVO:
+        return
+    if _crt is None:
+        _crt = CRT()
+    _crt.draw()
+
+
+def update_crt(dt):
+    if CRT_ATIVO and _crt is not None:
+        _crt.update(dt)
