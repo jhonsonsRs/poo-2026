@@ -2,7 +2,7 @@ import os
 import arcade
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from ui import (draw_crt, Layer, Title, Footer, get_background, make_sprite,
+from ui import (crt_begin, draw_crt, Layer, Title, Footer, get_background, make_sprite,
                 FONT_DIR, INK, MUTED)
 
 NOME = 'João Emanuel Vieira Orlando'
@@ -88,6 +88,7 @@ class AboutView(arcade.View):
         self.bg.update(delta_time)
 
     def on_draw(self):
+        crt_begin(self.window)
         self.clear()
         self.bg.draw()
         self.titulo.draw()

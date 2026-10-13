@@ -1,7 +1,7 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from pontuacao import Pontuacao
-from ui import (draw_crt, Layer, Title, Footer, get_background, rounded_image,
+from ui import (crt_begin, draw_crt, Layer, Title, Footer, get_background, rounded_image,
                 circle_image, GOLD, SILVER, BRONZE, INK, MUTED, CREAM_DK)
 
 MAX_LINHAS = 10
@@ -81,6 +81,7 @@ class RankingView(arcade.View):
         self.bg.update(delta_time)
 
     def on_draw(self):
+        crt_begin(self.window)
         self.clear()
         self.bg.draw()
         self.titulo.draw()

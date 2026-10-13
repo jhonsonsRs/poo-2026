@@ -525,19 +525,189 @@ class CRT:
         self.overlay.draw()
 
 
+# ---------------------------------------------- distorção do vidro curvo
+# Ajustes rápidos (0 = tela reta). Valores bons: 0.05 (sutil) a 0.15 (forte).
+CRT_CURVATURA = 0.09
+CRT_ABERRACAO = 0.0012  # leve separação de cores (RGB) nas bordas; 0 desliga
+CRT_GLITCH = 1.0        # força dos glitches aleatórios (0 desliga, 2 = bem forte)
+CRT_GLITCH_INTERVALO = (2.5, 8.0)  # segundos entre um glitch e outro
+
+_WARP_VS = """
+#version 330
+in vec2 in_vert;
+in vec2 in_uv;
+out vec2 uv;
+void main() {
+    uv = in_uv;
+    gl_Position = vec4(in_vert, 0.0, 1.0);
+}
+"""
+
+_WARP_FS = """
+#version 330
+uniform sampler2D tex;
+uniform float curv;
+uniform float aberr;
+uniform float time;
+uniform float glitch;
+in vec2 uv;
+out vec4 fragColor;
+
+float hash(float n) { return fract(sin(n * 12.9898) * 43758.5453); }
+
+vec2 warp(vec2 p) {
+    vec2 c = p * 2.0 - 1.0;
+    // quanto mais perto da borda, mais a imagem é "puxada" (efeito barril)
+    c *= 1.0 + vec2(c.y * c.y, c.x * c.x) * curv;
+    // compensa o encolhimento para a imagem continuar preenchendo a tela
+    c *= 1.0 / (1.0 + curv * 0.25);
+    return c * 0.5 + 0.5;
+}
+
+void main() {
+    vec2 q = warp(uv);          // posição "reta" no vidro curvo
+    vec2 p = q;
+    float gab = 0.0;            // separação horizontal de cores (glitch)
+    float noise = 0.0;
+    float tint = 0.0;
+
+    if (glitch > 0.0) {
+        float tt = floor(time * 24.0);   // o glitch muda ~24x por segundo
+        // 1) faixas largas deslocadas para o lado
+        float band = floor(uv.y * 26.0);
+        float on = step(0.72, hash(band + tt * 7.31));
+        p.x += (hash(band * 3.7 + tt) - 0.5) * 0.16 * glitch * on;
+        // 2) linhas finas "rasgadas"
+        float ln = floor(uv.y * 360.0);
+        float tear = step(0.985, hash(ln + tt * 1.77));
+        p.x += (hash(ln * 5.1 + tt) - 0.5) * 0.30 * glitch * tear;
+        // 3) a imagem inteira dá um pulinho vertical
+        p.y += step(0.85, hash(tt * 5.3)) * 0.015 * glitch;
+        // 4) cores se separam muito durante o glitch
+        gab = glitch * (0.004 + 0.012 * on);
+        // 5) chuvisco nas faixas afetadas + pontinhos aleatórios
+        noise = (on * 0.25 + tear * 0.5) * glitch
+              * hash(uv.x * 913.0 + uv.y * 517.0 + tt);
+        // 6) clarão rápido de cor (magenta/ciano)
+        tint = step(0.9, hash(tt * 2.9)) * 0.10 * glitch;
+    }
+
+    vec2 d = (p - 0.5);
+    vec3 col;
+    col.r = texture(tex, p + vec2(gab, 0.0) + d * aberr).r;
+    col.g = texture(tex, p).g;
+    col.b = texture(tex, p - vec2(gab, 0.0) - d * aberr).b;
+    col += noise;
+    col += vec3(tint, -tint * 0.4, tint * 0.8);
+
+    // bordas do vidro: preto fora da imagem, com suavização
+    vec2 e = smoothstep(vec2(0.0), vec2(0.004), q) *
+             (1.0 - smoothstep(vec2(0.996), vec2(1.0), q));
+    fragColor = vec4(col * e.x * e.y, 1.0);
+}
+"""
+
+
+class _Warp:
+    """Desenha a cena numa textura e depois a mostra na janela distorcida."""
+
+    def __init__(self, window):
+        from arcade.gl import geometry
+        self.window = window
+        ctx = window.ctx
+        self.size = window.get_framebuffer_size()
+        self.tex = ctx.texture(self.size, components=4)
+        self.tex.filter = ctx.LINEAR, ctx.LINEAR
+        self.tex.wrap_x = ctx.CLAMP_TO_EDGE
+        self.tex.wrap_y = ctx.CLAMP_TO_EDGE
+        self.fbo = ctx.framebuffer(color_attachments=[self.tex])
+        self.prog = ctx.program(vertex_shader=_WARP_VS,
+                                fragment_shader=_WARP_FS)
+        self.prog['tex'] = 0
+        self.prog['curv'] = CRT_CURVATURA
+        self.prog['aberr'] = CRT_ABERRACAO
+        self.quad = geometry.quad_2d_fs()
+        self.t = 0.0
+        self.g = 0.0          # intensidade atual do glitch (0 = nenhum)
+        self.g_left = 0.0     # tempo restante do glitch atual
+        self.g_wait = random.uniform(1.0, 3.0)  # primeiro glitch chega logo
+
+    def update(self, dt):
+        self.t = (self.t + dt) % 1000.0
+        if self.g_left > 0:
+            self.g_left -= dt
+            if self.g_left <= 0:
+                self.g = 0.0
+            return
+        self.g_wait -= dt
+        if self.g_wait <= 0 and CRT_GLITCH > 0:
+            self.trigger(random.choice((0.35, 0.6, 1.0)),
+                         random.uniform(0.08, 0.40))
+            self.g_wait = random.uniform(*CRT_GLITCH_INTERVALO)
+
+    def trigger(self, forca, duracao):
+        self.g = forca * CRT_GLITCH
+        self.g_left = duracao
+
+    def begin(self):
+        if self.window.get_framebuffer_size() != self.size:
+            self.__init__(self.window)  # janela redimensionada
+        self.fbo.use()
+        self.fbo.clear()
+
+    def present(self):
+        ctx = self.window.ctx
+        ctx.screen.use()
+        ctx.screen.clear()
+        self.tex.use(0)
+        self.prog['time'] = self.t
+        self.prog['glitch'] = self.g
+        self.quad.render(self.prog)
+
+
 _crt = None
+_warp = None
+_capturando = False
+
+
+def crt_begin(window):
+    """Chame no INÍCIO do on_draw (antes do self.clear()).
+
+    A partir daqui tudo é desenhado numa textura; o draw_crt() do final
+    aplica o efeito e mostra na janela com a distorção.
+    """
+    global _warp, _capturando
+    if not CRT_ATIVO or CRT_CURVATURA <= 0:
+        return
+    if _warp is None:
+        _warp = _Warp(window)
+    _warp.begin()
+    _capturando = True
 
 
 def draw_crt():
     """Chame no FINAL do on_draw de qualquer tela para aplicar o efeito."""
-    global _crt
+    global _crt, _capturando
     if not CRT_ATIVO:
         return
     if _crt is None:
         _crt = CRT()
     _crt.draw()
+    if _capturando:
+        _warp.present()
+        _capturando = False
 
 
 def update_crt(dt):
-    if CRT_ATIVO and _crt is not None:
+    if not CRT_ATIVO:
+        return
+    if _crt is not None:
         _crt.update(dt)
+    if _warp is not None:
+        _warp.update(dt)
+
+
+def crt_glitch(forca=1.0, duracao=0.3):
+    """Dispara um glitch na hora (ex.: quando o jogador leva dano)."""
+    if CRT_ATIVO and _warp is not None:
+        _warp.trigger(forca, duracao)

@@ -1,6 +1,6 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
-from ui import draw_crt, Button, Title, get_background
+from ui import crt_begin, draw_crt, Button, Title, get_background
 
 
 class MenuView(arcade.View):
@@ -58,6 +58,7 @@ class MenuView(arcade.View):
         self.bg.update(delta_time)
 
     def on_draw(self):
+        crt_begin(self.window)
         self.clear()
         self.bg.draw()
         self.titulo.draw()

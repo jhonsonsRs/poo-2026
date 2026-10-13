@@ -4,7 +4,7 @@ from player import Player
 from coin import Coin, SpecialCoin
 from enemy import Enemy, PinkMan
 from name_view import NameView
-from ui import draw_crt, update_crt
+from ui import crt_begin, draw_crt, update_crt, crt_glitch
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     PLAYER_MAX_HEALTH, PLAYER_SCALE, PLAYER_SPEED,
@@ -157,6 +157,7 @@ class GameView(arcade.View):
         self.player.on_key_release(key)
 
     def on_draw(self):
+        crt_begin(self.window)
         self.clear()
 
         # mundo (treme junto com a câmera)
@@ -230,6 +231,7 @@ class GameView(arcade.View):
             if enemy.on_hit_player(self.player):
                 self.player.apply_knockback(enemy_x)
                 self.start_shake()
+                crt_glitch(1.0, 0.35)
                 self.alert_label.text = '- 1 PONTO!'
                 self.alert_timer = 1.0
 

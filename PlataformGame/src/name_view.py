@@ -1,6 +1,6 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from ui import (draw_crt, Layer, Title, Footer, Button, T, get_background,
+from ui import (crt_begin, draw_crt, Layer, Title, Footer, Button, T, get_background,
                 rounded_image, make_sprite, INK, MUTED, RED)
 
 MAX_NOME = 16
@@ -59,6 +59,7 @@ class NameView(arcade.View):
         self.botao.active = self.botao.contains(x, y)
 
     def on_draw(self):
+        crt_begin(self.window)
         self.clear()
         self.bg.draw()
         self.titulo.draw()
