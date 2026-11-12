@@ -1,5 +1,6 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+import audio
 from ui import (crt_begin, draw_crt, Layer, Title, Footer, get_background, rounded_image,
                 circle_image, INK, MUTED, ORANGE)
 
@@ -10,6 +11,7 @@ COL_DIR = 700
 class InstructionsView(arcade.View):
     def __init__(self, window=None):
         super().__init__(window)
+        audio.tocar_musica('menu')
         self.bg = get_background()
         cx = SCREEN_WIDTH / 2
         self.titulo = Title('Instruções', cx, SCREEN_HEIGHT - 60, size=38)

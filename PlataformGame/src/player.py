@@ -2,33 +2,75 @@ import arcade
 from entity import Entity
 from constants import PLAYER_JUMP_SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
 
+LARGURA_QUADRO = 32
+ALTURA_QUADRO = 32
+INTERVALO_QUADRO = 0.1  # troca de quadro da caminhada a cada 100 ms
+
 
 class Player(Entity):
     def __init__(self, sprite: str, scale: float, speed: float, max_health: int, name: str):
         super().__init__(sprite, scale, speed, max_health)
-        self.facing_right = True
-        self.current_frame = 0
-        self.frame_timer = 0
-        self.frame_speed = 0.1
+        self.virado_para = 'direita'   # 'direita' ou 'esquerda'
+        self.frame_atual = 0
+        self.frame_timer = 0.0
+        self.estado = 'parado'
 
         self.name = name
-        self.idle_textures = self.load_atlas('../sprites/Frog/frog_idle.png', 4)
-        self.run_textures  = self.load_atlas('../sprites/Frog/frog_run.png',  6)
-        self.jump_textures = self.load_atlas('../sprites/Frog/frog_jump.png', 1)
-        self.fall_textures = self.load_atlas('../sprites/Frog/frog_fall.png', 1)
-        self.current_textures = self.idle_textures
+        self.idle_textures = self.carregar_quadros('../sprites/Frog/frog_idle.png', 4)
+        self.walk_textures = self.carregar_quadros('../sprites/Frog/frog_run.png',  6)
+        self.jump_textures = self.carregar_quadros('../sprites/Frog/frog_jump.png', 1)
+        self.fall_textures = self.carregar_quadros('../sprites/Frog/frog_fall.png', 1)
+        self.hit_textures = self.carregar_quadros('../sprites/Frog/frog_hit.png', 7)
 
         self.jump_speed = PLAYER_JUMP_SPEED
         self.score = 0
         self.is_on_ground = False
-        self.jumps_remaining = 2
         self.knockback_timer = 0.0
+        self.jumps_used = 0
+        self.max_jumps = 2
+        self.shoot_cooldown = 0.0
+        self.hit_timer = 0.0
+        self.invulnerability_timer = 0.0
+        self.rapid_fire_timer = 0.0
+        self._blink_timer = 0.0
+        self.world_width = SCREEN_WIDTH
+        self.world_height = SCREEN_HEIGHT
+
+    def set_world_bounds(self, width: float, height: float):
+        self.world_width = width
+        self.world_height = height
+
+    def carregar_quadros(self, caminho: str, quantidade: int) -> dict:
+        """Fatia a folha de sprites e devolve os quadros virados p/ direita e esquerda."""
+        folha = arcade.load_spritesheet(caminho)
+        direita = folha.get_texture_grid(
+            size=(LARGURA_QUADRO, ALTURA_QUADRO),
+            columns=quantidade,
+            count=quantidade,
+        )
+        esquerda = [textura.flip_left_right() for textura in direita]
+        return {'direita': direita, 'esquerda': esquerda}
 
     def update(self, delta_time: float = 1/60, keys: set = None):
         if keys is None:
             keys = set()
 
         em_knockback = self.knockback_timer > 0
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= delta_time
+        if self.rapid_fire_timer > 0:
+            self.rapid_fire_timer = max(0, self.rapid_fire_timer - delta_time)
+        if self.hit_timer > 0:
+            self.hit_timer -= delta_time
+        if self.invulnerability_timer > 0:
+            self.invulnerability_timer = max(0, self.invulnerability_timer - delta_time)
+            if self.invulnerability_timer > 0:
+                self._blink_timer += delta_time
+                self.visible = int(self._blink_timer / 0.08) % 2 == 0
+            else:
+                self.visible = True
+        else:
+            self.visible = True
         if em_knockback:
             self.knockback_timer -= delta_time
         else:
@@ -39,51 +81,54 @@ class Player(Entity):
             else:
                 self.change_x = 0
 
-        self.center_x = max(self.width / 2, min(self.center_x, SCREEN_WIDTH - self.width / 2))
-        self.center_y = max(self.height / 2, min(self.center_y, SCREEN_HEIGHT - self.height / 2))
-
-        if self.change_y > 0:
-            new_textures = self.jump_textures
-        elif self.change_y < 0:
-            new_textures = self.fall_textures
-        elif self.change_x != 0:
-            new_textures = self.run_textures
-        else:
-            new_textures = self.idle_textures
-
-        if new_textures is not self.current_textures:
-            self.current_textures = new_textures
-            self.current_frame = 0
+        self.center_x = max(self.width / 2, min(self.center_x, self.world_width - self.width / 2))
+        self.center_y = max(self.height / 2, min(self.center_y, self.world_height - self.height / 2))
 
         if not em_knockback:
             if self.change_x > 0:
-                self.facing_right = True
+                self.virado_para = 'direita'
             elif self.change_x < 0:
-                self.facing_right = False
+                self.virado_para = 'esquerda'
 
-        self.frame_timer += delta_time
-        if self.frame_timer >= self.frame_speed:
-            self.frame_timer = 0
-            self.current_frame = (self.current_frame + 1) % len(self.current_textures)
+        self._atualizar_animacao(delta_time)
 
-        direction = 0 if self.facing_right else 1
-        self.texture = self.current_textures[self.current_frame][direction]
+    def _atualizar_animacao(self, delta_time: float):
+        """Máquina de estados. Prioridade: pulo/queda -> parado -> andando."""
+        if self.hit_timer > 0:
+            novo_estado = 'atingido'
+        elif self.change_y != 0:
+            novo_estado = 'pulo' if self.change_y > 0 else 'queda'
+        elif self.change_x == 0:
+            novo_estado = 'parado'
+        else:
+            novo_estado = 'andando'
 
-    def load_atlas(self, path, frame_count):
-        sheet = arcade.texture.spritesheet.SpriteSheet(path)
-        textures = []
-        for i in range(frame_count):
-            rect = arcade.LRBT(i * 32, i * 32 + 32, 0, 32)
-            tex_right = sheet.get_texture(rect)
-            sheet.flip_left_right()
-            tex_left = sheet.get_texture(rect)
-            sheet.flip_left_right()
-            textures.append((tex_right, tex_left))
-        return textures
+        if novo_estado != self.estado:
+            self.estado = novo_estado
+            self.frame_atual = 0
+            self.frame_timer = 0.0
 
-    def on_key_press(self, key):
-        if key == arcade.key.SPACE:
-            self.jump()
+        if self.estado == 'atingido':
+            quadros = self.hit_textures[self.virado_para]
+            self.frame_timer += delta_time
+            while self.frame_timer >= INTERVALO_QUADRO:
+                self.frame_timer -= INTERVALO_QUADRO
+                self.frame_atual = min(self.frame_atual + 1, len(quadros) - 1)
+        elif self.estado == 'pulo':
+            quadros = self.jump_textures[self.virado_para]
+        elif self.estado == 'queda':
+            quadros = self.fall_textures[self.virado_para]
+        elif self.estado == 'parado':
+            quadros = self.idle_textures[self.virado_para]
+            self.frame_atual = 0          # textura estática
+        else:
+            quadros = self.walk_textures[self.virado_para]
+            self.frame_timer += delta_time
+            while self.frame_timer >= INTERVALO_QUADRO:
+                self.frame_timer -= INTERVALO_QUADRO
+                self.frame_atual = (self.frame_atual + 1) % len(quadros)
+
+        self.texture = quadros[self.frame_atual]
 
     def on_key_release(self, key):
         if self.knockback_timer > 0:
@@ -94,10 +139,29 @@ class Player(Entity):
             self.change_x = 0
 
     def jump(self):
-        if self.jumps_remaining > 0:
-            self.change_y = self.jump_speed
-            self.jumps_remaining -= 1
-            self.is_on_ground = False
+        """Aplica o impulso. Quem decide se pode pular é o can_jump() da física."""
+        self.change_y = self.jump_speed
+        self.is_on_ground = False
+
+    def can_shoot(self) -> bool:
+        if self.shoot_cooldown > 0 or self.hit_timer > 0:
+            return False
+        self.shoot_cooldown = 0.25
+        if self.rapid_fire_timer > 0:
+            self.shoot_cooldown = 0.08
+        return True
+
+    def receive_damage(self, damage: int) -> bool:
+        if self.invulnerability_timer > 0:
+            return False
+        self.take_damage(damage)
+        self.hit_timer = 0.35
+        self.invulnerability_timer = 1.1
+        self._blink_timer = 0.0
+        self.visible = True
+        self.frame_atual = 0
+        self.frame_timer = 0.0
+        return True
 
     def apply_knockback(self, source_x: float, force_x: float = 9.0,
                         force_y: float = 8.0, duration: float = 0.2):

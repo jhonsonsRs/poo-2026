@@ -1,5 +1,6 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+import audio
 from ui import (crt_begin, draw_crt, Layer, Title, Footer, Button, T, get_background,
                 rounded_image, make_sprite, INK, MUTED, RED)
 
@@ -10,6 +11,7 @@ class NameView(arcade.View):
 
     def __init__(self, window=None):
         super().__init__(window)
+        audio.tocar_musica('menu')
         self.bg = get_background()
         self.nome = ''
         self.erro = ''
@@ -84,6 +86,7 @@ class NameView(arcade.View):
             return
         if text.isprintable():
             self.nome += text
+            audio.sfx('tecla')
             self.erro = ''
 
     def on_key_press(self, key, modifiers):
@@ -104,6 +107,8 @@ class NameView(arcade.View):
 
         if not nome:
             self.erro = 'Digite um nome antes de continuar.'
+            audio.sfx('erro')
             return
-        from game_view import GameView
-        self.window.show_view(GameView(nome))
+        audio.sfx('selecionar')
+        from mode_view import ModeView
+        self.window.show_view(ModeView(nome))

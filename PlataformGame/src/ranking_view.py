@@ -1,81 +1,67 @@
 import arcade
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+
+import audio
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH
 from pontuacao import Pontuacao
-from ui import (crt_begin, draw_crt, Layer, Title, Footer, get_background, rounded_image,
-                circle_image, GOLD, SILVER, BRONZE, INK, MUTED, CREAM_DK)
+from ui import (
+    BRONZE, CREAM_DK, FONT, GOLD, INK, Layer, MUTED, SILVER, Title,
+    Footer, crt_begin, draw_crt, get_background, rounded_image, circle_image,
+)
 
-MAX_LINHAS = 10
-
-X_POS = 215
-X_NOME = 275
-X_MOEDAS = 710
-X_TEMPO = 850
-X_TAXA = 1065
-
+MAX_LINHAS = 5
 PODIO = [GOLD, SILVER, BRONZE]
+COLUNAS = (
+    ('quick', 'PARTIDA RÁPIDA', 350),
+    ('hardcore', 'PARTIDA HARDCORE', 930),
+)
+Y_CABECALHO = 505
+Y_PRIMEIRA = 460
+ESPACO_LINHAS = 62
 
 
-class RankingView(arcade.View):
+class TelaRanking(arcade.View):
     def __init__(self, window=None):
         super().__init__(window)
+        audio.tocar_musica('menu')
         self.bg = get_background()
-
-        # Consulta uma vez só (não no on_draw, que roda todo frame)
-        registros = []
-        for reg in Pontuacao.select():
-            taxa = reg.pontuacao / reg.tempo if reg.tempo > 0 else 0
-            registros.append((reg, taxa))
-
-        # Maior moedas/segundo primeiro; empate decide por mais moedas
-        registros.sort(key=lambda r: (r[1], r[0].pontuacao), reverse=True)
-        self.registros = registros[:MAX_LINHAS]
+        self.rankings = {
+            modo: list(
+                Pontuacao.select()
+                .where(Pontuacao.modo == modo)
+                .order_by(Pontuacao.pontos.desc())
+                .limit(MAX_LINHAS)
+            )
+            for modo, _, _ in COLUNAS
+        }
 
         cx = SCREEN_WIDTH / 2
         self.titulo = Title('RANKING', cx, SCREEN_HEIGHT - 60, size=40)
         self.rodape = Footer([('M', 'Menu Principal'), ('ESC', 'Sair')])
+        self.layer = Layer()
+        self.layer.panel(cx, 335, 1160, 500)
 
-        L = self.layer = Layer()
-        L.panel(cx, 352, 1000, 490)
+        for modo, titulo, coluna_x in COLUNAS:
+            self.layer.text(titulo, coluna_x, 560, 20, INK, bold=True)
+            self.layer.text('JOGADOR', coluna_x - 190, Y_CABECALHO,
+                            11, MUTED, bold=True, ax='left')
+            self.layer.text('PONTOS', coluna_x + 100, Y_CABECALHO,
+                            11, MUTED, bold=True, ax='right')
+            self.layer.text('TEMPO', coluna_x + 190, Y_CABECALHO,
+                            11, MUTED, bold=True, ax='right')
+            self._faixas(modo, coluna_x)
 
-        if not self.registros:
-            L.text('Nenhuma pontuação registrada ainda.', cx, 370, 22, INK)
-        else:
-            self._tabela(L)
-
-    def _tabela(self, L):
-        y_cab = 565
-        L.text('JOGADOR', X_NOME, y_cab, 12, MUTED, bold=True, ax='left')
-        L.text('MOEDAS', X_MOEDAS, y_cab, 12, MUTED, bold=True, ax='right')
-        L.text('TEMPO', X_TEMPO, y_cab, 12, MUTED, bold=True, ax='right')
-        L.text('MOEDAS/S', X_TAXA, y_cab, 12, MUTED, bold=True, ax='right')
-
-        for i, (reg, taxa) in enumerate(self.registros):
-            y = 520 - i * 41
-            podio = i < 3
-            cor = INK
-
-            # faixa de fundo (tingida nos 3 primeiros)
-            if podio:
-                faixa = PODIO[i]
-            elif i % 2 == 0:
-                faixa = CREAM_DK
-            else:
-                faixa = None
+    def _faixas(self, modo, coluna_x):
+        for i in range(len(self.rankings[modo])):
+            y = Y_PRIMEIRA - i * ESPACO_LINHAS
+            faixa = PODIO[i] if i < 3 else CREAM_DK if i % 2 == 0 else None
             if faixa:
-                L.image(rounded_image(940, 38, 6, faixa), 640, y)
-
-            # posição: medalha para o pódio, número simples para o resto
-            if podio:
-                L.image(circle_image(30, (255, 255, 255, 255), ow=3), X_POS, y)
-                L.text(str(i + 1), X_POS, y, 15, INK, bold=True)
-            else:
-                L.text(f'{i + 1}º', X_POS, y, 16, MUTED, bold=True)
-
-            L.text(reg.nome_player, X_NOME, y, 18, cor, bold=podio,
-                   ax='left')
-            L.text(f'{reg.pontuacao:g}', X_MOEDAS, y, 18, cor, ax='right')
-            L.text(f'{reg.tempo:.1f}s', X_TEMPO, y, 18, cor, ax='right')
-            L.text(f'{taxa:.2f}', X_TAXA, y, 18, cor, bold=True, ax='right')
+                self.layer.image(rounded_image(500, 50, 6, faixa),
+                                 coluna_x, y)
+            if i < 3:
+                self.layer.image(
+                    circle_image(30, (255, 255, 255, 255), ow=3),
+                    coluna_x - 225, y
+                )
 
     def on_update(self, delta_time):
         self.bg.update(delta_time)
@@ -86,6 +72,39 @@ class RankingView(arcade.View):
         self.bg.draw()
         self.titulo.draw()
         self.layer.draw()
+
+        for modo, _, coluna_x in COLUNAS:
+            registros = self.rankings[modo]
+            if not registros:
+                arcade.draw_text(
+                    'Nenhuma pontuação',
+                    coluna_x, 350, INK, 18, font_name=FONT,
+                    anchor_x='center', anchor_y='center'
+                )
+                continue
+            for i, registro in enumerate(registros):
+                y = Y_PRIMEIRA - i * ESPACO_LINHAS
+                arcade.draw_text(
+                    str(i + 1) if i < 3 else f'{i + 1}º',
+                    coluna_x - 225, y, INK if i < 3 else MUTED, 15,
+                    font_name=FONT, bold=i < 3,
+                    anchor_x='center', anchor_y='center'
+                )
+                arcade.draw_text(
+                    registro.nome_jogador, coluna_x - 190, y, INK, 16,
+                    font_name=FONT, bold=i < 3,
+                    anchor_x='left', anchor_y='center'
+                )
+                arcade.draw_text(
+                    str(registro.pontos), coluna_x + 100, y, INK, 16,
+                    font_name=FONT, anchor_x='right', anchor_y='center'
+                )
+                arcade.draw_text(
+                    f'{registro.tempo_partida:.1f}s', coluna_x + 190, y,
+                    INK, 16, font_name=FONT, anchor_x='right',
+                    anchor_y='center'
+                )
+
         self.rodape.draw()
         draw_crt()
 

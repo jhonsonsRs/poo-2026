@@ -1,11 +1,13 @@
 import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 from ui import crt_begin, draw_crt, Button, Title, get_background
+import audio
 
 
 class MenuView(arcade.View):
     def __init__(self, window=None):
         super().__init__(window)
+        audio.tocar_musica('menu')
         self.bg = get_background()
         cx = SCREEN_WIDTH / 2
 
@@ -33,22 +35,28 @@ class MenuView(arcade.View):
 
     # ---------------------------------------------------------- navegação
     def ir_jogar(self):
+        audio.sfx('selecionar')
         from name_view import NameView
         self.window.show_view(NameView())
 
     def ir_instrucoes(self):
+        audio.sfx('selecionar')
         from instructions_view import InstructionsView
         self.window.show_view(InstructionsView())
 
     def ir_sobre(self):
+        audio.sfx('selecionar')
         from about_view import AboutView
         self.window.show_view(AboutView())
 
     def ir_ranking(self):
-        from ranking_view import RankingView
-        self.window.show_view(RankingView())
+        audio.sfx('selecionar')
+        from ranking_view import TelaRanking
+        self.window.show_view(TelaRanking())
 
     def _selecionar(self, i):
+        if i != self.sel:
+            audio.sfx('navegar')
         self.sel = i
         for n, b in enumerate(self.botoes):
             b.active = (n == i)
