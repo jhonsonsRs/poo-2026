@@ -8,7 +8,7 @@ while(len(mensagem) < 2):
     print("⚠️ Mensagem muito pequena 🤏")
     mensagem = input("Mensagem do commit: ")
 
-comando1 = "git add *"
+comando1 = "git add -A"
 retorno2 = os.system(comando1)
 print(f"comando retornou: {retorno2}")
 
